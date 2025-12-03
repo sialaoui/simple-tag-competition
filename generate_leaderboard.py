@@ -41,19 +41,9 @@ def load_all_results(results_dir: Path) -> List[Dict[str, Any]]:
     return results
 
 
-def calculate_combined_score(prey_score: float, predator_score: float) -> float:
-    """
-    Calculate a combined score from prey and predator scores.
-    
-    Args:
-        prey_score: Average reward as prey
-        predator_score: Average reward as predator
-        
-    Returns:
-        Combined score
-    """
-    # Simple average - you can customize this weighting
-    return (prey_score + predator_score) / 2
+def sort_key(result: Dict[str, Any]) -> float:
+    """Sort by predator score descending."""
+    return result.get("predator_score", float('-inf'))
 
 
 def generate_leaderboard_html(results: List[Dict[str, Any]], output_path: Path):
@@ -64,14 +54,8 @@ def generate_leaderboard_html(results: List[Dict[str, Any]], output_path: Path):
         results: List of evaluation results
         output_path: Path to save HTML file
     """
-    # Sort by combined score (descending)
-    for result in results:
-        result["combined_score"] = calculate_combined_score(
-            result["prey_score"],
-            result["predator_score"]
-        )
-    
-    sorted_results = sorted(results, key=lambda x: x["combined_score"], reverse=True)
+    # Sort by predator score (descending)
+    sorted_results = sorted(results, key=sort_key, reverse=True)
     
     # Generate HTML
     html = """<!DOCTYPE html>
@@ -273,8 +257,6 @@ def generate_leaderboard_html(results: List[Dict[str, Any]], output_path: Path):
                     <tr>
                         <th>Rank</th>
                         <th>Student</th>
-                        <th>Combined Score</th>
-                        <th>Prey Score</th>
                         <th>Predator Score</th>
                         <th>Last Submission</th>
                     </tr>
@@ -285,8 +267,7 @@ def generate_leaderboard_html(results: List[Dict[str, Any]], output_path: Path):
     # Add rows
     for i, result in enumerate(sorted_results, 1):
         rank_class = f"rank-{i}" if i <= 3 else "rank"
-        prey_class = "score-positive" if result["prey_score"] > 0 else "score-negative"
-        predator_class = "score-positive" if result["predator_score"] > 0 else "score-negative"
+        predator_class = "score-positive" if result.get("predator_score", 0) > 0 else "score-negative"
         
         timestamp = datetime.fromisoformat(result["timestamp"]).strftime("%Y-%m-%d %H:%M")
         
@@ -294,9 +275,7 @@ def generate_leaderboard_html(results: List[Dict[str, Any]], output_path: Path):
                     <tr>
                         <td class="{rank_class}">#{i}</td>
                         <td class="student-name">{result['student']}</td>
-                        <td class="score">{result['combined_score']:.4f}</td>
-                        <td class="score {prey_class}">{result['prey_score']:.4f}</td>
-                        <td class="score {predator_class}">{result['predator_score']:.4f}</td>
+                        <td class="score {predator_class}">{result.get('predator_score', 0):.4f}</td>
                         <td class="timestamp">{timestamp}</td>
                     </tr>
 """
@@ -314,10 +293,10 @@ def generate_leaderboard_html(results: List[Dict[str, Any]], output_path: Path):
         </div>
         
         <footer>
-            <p>Scores represent average rewards over {results[0].get('num_episodes', 0) if results else 0} episodes</p>
-            <p>Combined score is the average of prey and predator scores</p>
+        <footer>
+            <p>Predator scores represent average rewards over {results[0].get('num_episodes', 0) if results else 0} episodes</p>
+            <p>Students train predators to catch the public reference prey agent</p>
         </footer>
-    </div>
 </body>
 </html>
 """

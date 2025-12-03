@@ -42,94 +42,90 @@ def test_agent(agent_file: Path, num_episodes: int = 5):
     try:
         AgentClass = load_agent_class(agent_file)
     except Exception as e:
-        print(f"❌ Failed to load agent: {e}")
+        print(f"Failed to load agent: {e}")
         return False
     
-    print("✓ Agent loaded successfully")
+    print("Agent loaded successfully")
     
-    # Test both agent types
-    for agent_type in ["prey", "predator"]:
-        print(f"\n--- Testing {agent_type.upper()} agent ---")
+    # Test predator agent only (students only submit predator)
+    print(f"\n--- Testing PREDATOR agent ---")
+    
+    try:
+        agent = AgentClass()
+        print(f"Predator agent initialized")
+    except Exception as e:
+        print(f"Failed to initialize predator agent: {e}")
+        return False
+    
+    # Run a few episodes
+    total_reward = 0
+    
+    for episode in range(num_episodes):
+        env = simple_tag_v3.parallel_env(
+            num_good=1,
+            num_adversaries=3,
+            num_obstacles=2,
+            max_cycles=25,  # Short episodes for testing
+            continuous_actions=False
+        )
         
-        try:
-            agent = AgentClass(agent_type)
-            print(f"✓ {agent_type.capitalize()} agent initialized")
-        except Exception as e:
-            print(f"❌ Failed to initialize {agent_type} agent: {e}")
-            return False
+        observations, infos = env.reset()
         
-        # Run a few episodes
-        total_reward = 0
+        # Track agents for this episode
+        episode_agents = {}
+        episode_reward = 0
+        steps = 0
         
-        for episode in range(num_episodes):
-            env = simple_tag_v3.parallel_env(
-                num_good=1,
-                num_adversaries=3,
-                num_obstacles=2,
-                max_cycles=25,  # Short episodes for testing
-                continuous_actions=False
-            )
+        while env.agents:
+            actions = {}
             
-            observations, infos = env.reset()
-            
-            # Track agents for this episode
-            episode_agents = {}
-            episode_reward = 0
-            steps = 0
-            
-            while env.agents:
-                actions = {}
+            for agent_id in env.agents:
+                obs = observations[agent_id]
                 
-                for agent_id in env.agents:
-                    obs = observations[agent_id]
+                # Determine if this is a predator (adversary)
+                is_predator = "adversary" in agent_id
+                
+                if is_predator:
+                    # Use student predator agent
+                    if agent_id not in episode_agents:
+                        episode_agents[agent_id] = AgentClass()
                     
-                    # Determine agent type
-                    is_test_agent = ("adversary" in agent_id and agent_type == "predator") or \
-                                   ("adversary" not in agent_id and agent_type == "prey")
-                    
-                    if is_test_agent:
-                        # Use student agent
-                        if agent_id not in episode_agents:
-                            episode_agents[agent_id] = AgentClass(agent_type)
-                        
-                        try:
-                            action = episode_agents[agent_id].get_action(obs, agent_id)
-                        except Exception as e:
-                            print(f"❌ Error in get_action: {e}")
-                            return False
-                    else:
-                        # Random agent for opponents
-                        action = np.random.randint(0, 5)
-                    
-                    actions[agent_id] = action
+                    try:
+                        action = episode_agents[agent_id].get_action(obs, agent_id)
+                    except Exception as e:
+                        print(f"Error in get_action: {e}")
+                        return False
+                else:
+                    # Random prey agent for testing
+                    action = np.random.randint(0, 5)
                 
-                # Step environment
-                try:
-                    observations, rewards, terminations, truncations, infos = env.step(actions)
-                except Exception as e:
-                    print(f"❌ Error during environment step: {e}")
-                    return False
-                
-                # Accumulate rewards for our test agent
-                for agent_id, reward in rewards.items():
-                    is_test_agent = ("adversary" in agent_id and agent_type == "predator") or \
-                                   ("adversary" not in agent_id and agent_type == "prey")
-                    if is_test_agent:
-                        episode_reward += reward
-                
-                steps += 1
-                
-                if steps >= 25:
-                    break
+                actions[agent_id] = action
             
-            total_reward += episode_reward
-            env.close()
+            # Step environment
+            try:
+                observations, rewards, terminations, truncations, infos = env.step(actions)
+            except Exception as e:
+                print(f"Error during environment step: {e}")
+                return False
+            
+            # Accumulate rewards for predators
+            for agent_id, reward in rewards.items():
+                if "adversary" in agent_id:
+                    episode_reward += reward
+            
+            steps += 1
+            
+            if steps >= 25:
+                break
         
-        avg_reward = total_reward / num_episodes
-        print(f"✓ Average reward over {num_episodes} episodes: {avg_reward:.4f}")
+        total_reward += episode_reward
+        env.close()
+    
+    avg_reward = total_reward / num_episodes
+    print(f"Average predator reward over {num_episodes} episodes: {avg_reward:.4f}")
     
     print("\n" + "="*60)
-    print("✅ All tests passed! Your agent is ready to submit.")
+    print("All tests passed! Your agent is ready to submit.")
     print("="*60)
     return True
 
@@ -145,16 +141,16 @@ def main():
     agent_file = Path(sys.argv[1])
     
     if not agent_file.exists():
-        print(f"❌ File not found: {agent_file}")
+        print(f"File not found: {agent_file}")
         sys.exit(1)
     
     if agent_file.name != "agent.py":
-        print(f"⚠️  Warning: File should be named 'agent.py', got '{agent_file.name}'")
+        print(f"Warning: File should be named 'agent.py', got '{agent_file.name}'")
     
     success = test_agent(agent_file)
     
     if not success:
-        print("\n❌ Tests failed. Please fix the errors and try again.")
+        print("\nTests failed. Please fix the errors and try again.")
         sys.exit(1)
 
 

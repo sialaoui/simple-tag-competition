@@ -4,7 +4,7 @@ Welcome to the Simple Tag Competition! This project uses the [Simple Tag environ
 
 ## Overview
 
-In this competition, you will train both **prey** and **predator** agents. Your agents will be evaluated against private reference implementations to measure their performance.
+In this competition, you will train the **predator** agent only. Your predator will be evaluated against a public reference **prey** provided in this repository.
 
 ## Environment
 
@@ -26,23 +26,19 @@ You must submit **via Pull Request** from your fork:
 Your submission should follow this structure:
 ```
 submissions/<your_username>/
-├── agent.py          # Required: Your agent implementation
-├── prey_model.pth    # Optional: Your prey neural network weights
+├── agent.py           # Required: Your predator implementation
 └── predator_model.pth # Optional: Your predator neural network weights
 ```
 
 ### Agent Implementation Requirements
 
-Your `agent.py` must implement the following class:
+Your `agent.py` must implement the following class (predator only):
 
 ```python
 class StudentAgent:
-    def __init__(self, agent_type: str):
+    def __init__(self):
         """
-        Initialize your agent.
-        
-        Args:
-            agent_type: Either "prey" or "predator"
+        Initialize your predator agent.
         """
         pass
     
@@ -72,7 +68,7 @@ See `template/agent.py` for a complete template.
 
 ### Evaluation
 
-- Your agents are evaluated against **private reference implementations**
+- Your predator is evaluated against a **public reference prey**
 - Each PR triggers automatic evaluation via GitHub Actions
 - Results are published to the leaderboard immediately
 - **Note**: PRs are not merged - they are only used for evaluation
@@ -84,7 +80,7 @@ See `template/agent.py` for a complete template.
 - You may use pre-trained models
 - You can submit multiple times (new PRs will update your score)
 - Do not modify files outside your submission folder
-- Do not submit more than one Python file
+- Submit one `agent.py` file and optionally any `.pth` model files
 
 ## Local Development
 
@@ -111,7 +107,6 @@ Check the live leaderboard at: [https://nathanael-fijalkow.github.io/simple-tag-
 
 The leaderboard shows:
 - Student username
-- Prey score (average reward)
-- Predator score (average reward)
+- Predator score (average reward vs public prey)
 - Submission timestamp
 - Ranking

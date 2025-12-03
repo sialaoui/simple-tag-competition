@@ -89,11 +89,11 @@ jobs:
           
           echo "✓ Submission structure is valid"
       
-      - name: Setup private agents
+      - name: Setup reference prey agent
         run: |
-          mkdir -p private_agents
-          echo "${{ secrets.PRIVATE_PREY_AGENT }}" | base64 -d > private_agents/prey_agent.py
-          echo "${{ secrets.PRIVATE_PREDATOR_AGENT }}" | base64 -d > private_agents/predator_agent.py
+          mkdir -p reference_agents
+          cp reference_agents_source/prey_agent.py reference_agents/prey_agent.py
+          cp reference_agents_source/prey_final_model.zip reference_agents/prey_final_model.zip
       
       - name: Run evaluation
         id: evaluate
@@ -109,7 +109,7 @@ jobs:
           
           python evaluate.py \
             --submission-dir "$submission_dir" \
-            --private-agents-dir "private_agents" \
+            --reference-agents-dir "reference_agents" \
             --output "$output_file" \
             --episodes 500
           
@@ -127,15 +127,9 @@ jobs:
           output_file="${{ steps.evaluate.outputs.output_file }}"
           
           if [ -f "$output_file" ]; then
-            prey_score=$(jq -r '.prey_score' "$output_file")
-            prey_std=$(jq -r '.prey_std' "$output_file")
             predator_score=$(jq -r '.predator_score' "$output_file")
-            predator_std=$(jq -r '.predator_std' "$output_file")
             
-            echo "prey_score=$prey_score" >> $GITHUB_OUTPUT
-            echo "prey_std=$prey_std" >> $GITHUB_OUTPUT
             echo "predator_score=$predator_score" >> $GITHUB_OUTPUT
-            echo "predator_std=$predator_std" >> $GITHUB_OUTPUT
           fi
       
       - name: Commit and push results
@@ -158,10 +152,7 @@ jobs:
         with:
           script: |
             const username = '${{ steps.submission.outputs.username }}';
-            const preyScore = '${{ steps.scores.outputs.prey_score }}';
-            const preyStd = '${{ steps.scores.outputs.prey_std }}';
             const predatorScore = '${{ steps.scores.outputs.predator_score }}';
-            const predatorStd = '${{ steps.scores.outputs.predator_std }}';
             
             const body = `## 🎯 Evaluation Results
             
@@ -171,13 +162,12 @@ jobs:
             
             | Agent Type | Score |
             |------------|-------|
-            | 🐰 Prey | ${parseFloat(preyScore).toFixed(4)} |
             | 🦁 Predator | ${parseFloat(predatorScore).toFixed(4)} |
             
             ### Details
             - **Episodes:** 500
             - **Environment:** Simple Tag (PettingZoo MPE)
-            - **Combined Score:** ${((parseFloat(preyScore) + parseFloat(predatorScore)) / 2).toFixed(4)}
+            - **Metric:** Average predator reward vs reference prey
             
             ### Next Steps
             
@@ -188,7 +178,7 @@ jobs:
             Want to improve your score? Feel free to submit a new PR with an updated agent!
             
             ---
-            *This evaluation was performed automatically. Scores represent average rewards over 500 episodes against private reference implementations.*
+            *This evaluation was performed automatically. Score is average predator reward over 500 episodes against the public reference prey.*
             `;
             
             github.rest.issues.createComment({

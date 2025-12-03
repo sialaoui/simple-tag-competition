@@ -1,7 +1,7 @@
 """
 Template for student agent submission.
 
-Students should implement the StudentAgent class with both prey and predator behavior.
+Students should implement the StudentAgent class for the predator only.
 """
 
 import torch
@@ -15,34 +15,21 @@ class StudentAgent:
     Template agent class for Simple Tag competition.
     
     Students must implement this class with their own agent logic.
-    The agent should handle both "prey" and "predator" types.
+    The agent should handle only the "predator" type. The prey is provided publicly by the course.
     """
     
-    def __init__(self, agent_type: str):
+    def __init__(self):
         """
-        Initialize your agent.
-        
-        Args:
-            agent_type (str): Either "prey" or "predator"
+        Initialize your predator agent.
         """
-        self.agent_type = agent_type
-        
         # Example: Load your trained models
         # Get the directory where this file is located
         self.submission_dir = Path(__file__).parent
         
-        if agent_type == "prey":
-            # Example: Load prey model
-            # model_path = self.submission_dir / "prey_model.pth"
-            # self.model = self.load_model(model_path)
-            pass
-        elif agent_type == "predator":
-            # Example: Load predator model
-            # model_path = self.submission_dir / "predator_model.pth"
-            # self.model = self.load_model(model_path)
-            pass
-        else:
-            raise ValueError(f"Unknown agent type: {agent_type}")
+        # Example: Load predator model
+        # model_path = self.submission_dir / "predator_model.pth"
+        # self.model = self.load_model(model_path)
+        pass
     
     def get_action(self, observation, agent_id: str):
         """
@@ -50,7 +37,6 @@ class StudentAgent:
         
         Args:
             observation: Agent's observation from the environment (numpy array)
-                         - Prey (good agent): shape (16,)
                          - Predator (adversary): shape (14,)
             agent_id (str): Unique identifier for this agent instance
             
@@ -120,15 +106,8 @@ if __name__ == "__main__":
     # Example usage
     print("Testing StudentAgent...")
     
-    # Test prey agent (good agent has 16-dim observation)
-    prey_agent = StudentAgent("prey")
-    prey_obs = np.random.randn(16)  # Prey observation size
-    prey_action = prey_agent.get_action(prey_obs, "agent_0")
-    print(f"Prey observation shape: {prey_obs.shape}")
-    print(f"Prey action: {prey_action} (should be in [0, 4])")
-    
     # Test predator agent (adversary has 14-dim observation)
-    predator_agent = StudentAgent("predator")
+    predator_agent = StudentAgent()
     predator_obs = np.random.randn(14)  # Predator observation size
     predator_action = predator_agent.get_action(predator_obs, "adversary_0")
     print(f"Predator observation shape: {predator_obs.shape}")

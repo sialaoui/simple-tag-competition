@@ -35,13 +35,12 @@ class AgentLoader:
     """Utility class to load agent implementations."""
     
     @staticmethod
-    def load_agent_from_file(file_path: Path, agent_type: str):
+    def load_agent_from_file(file_path: Path):
         """
         Dynamically load a StudentAgent from a Python file.
         
         Args:
             file_path: Path to the agent.py file
-            agent_type: "prey" or "predator"
             
         Returns:
             Instantiated agent
@@ -54,17 +53,16 @@ class AgentLoader:
             if not hasattr(module, 'StudentAgent'):
                 raise AttributeError("Module must contain a 'StudentAgent' class")
             
-            agent = module.StudentAgent(agent_type)
+            agent = module.StudentAgent()
             return agent
         except Exception as e:
             raise RuntimeError(f"Failed to load agent from {file_path}: {e}")
 
 
 class SimpleTagEvaluator:
-    """Evaluator for Simple Tag environment."""
+    """Evaluator for Simple Tag environment (predator-only evaluation)."""
     
     def __init__(self):
-        """Initialize evaluator (no seeding)."""
         pass
     
     def evaluate(
@@ -75,11 +73,11 @@ class SimpleTagEvaluator:
         max_steps: int = 100
     ) -> Dict[str, Any]:
         """
-        Evaluate agents in the Simple Tag environment.
+        Evaluate student predator against reference prey.
         
         Args:
-            prey_agent_path: Path to prey agent.py
-            predator_agent_path: Path to predator agent.py
+            prey_agent_path: Path to reference prey agent.py (public)
+            predator_agent_path: Path to student predator agent.py
             num_episodes: Number of episodes to run
             max_steps: Maximum steps per episode
             
@@ -89,22 +87,9 @@ class SimpleTagEvaluator:
         print(f"Loading prey agent from: {prey_agent_path}")
         print(f"Loading predator agent from: {predator_agent_path}")
         
-        # Load agents
-        try:
-            prey_agents = {}
-            predator_agents = {}
-            
-            # We'll load agents as needed when we see agent IDs
-            prey_loader = lambda: AgentLoader.load_agent_from_file(prey_agent_path, "prey")
-            predator_loader = lambda: AgentLoader.load_agent_from_file(predator_agent_path, "predator")
-            
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "prey_score": 0,
-                "predator_score": 0
-            }
+        # Loaders
+        prey_loader = lambda: AgentLoader.load_agent_from_file(prey_agent_path)
+        predator_loader = lambda: AgentLoader.load_agent_from_file(predator_agent_path)
         
         # Run evaluation
         prey_rewards = []
@@ -186,9 +171,7 @@ class SimpleTagEvaluator:
         results = {
             "success": True,
             "prey_score": float(np.mean(prey_rewards)),
-            "prey_std": float(np.std(prey_rewards)),
             "predator_score": float(np.mean(predator_rewards)),
-            "predator_std": float(np.std(predator_rewards)),
             "num_episodes": num_episodes
         }
         
@@ -197,16 +180,16 @@ class SimpleTagEvaluator:
 
 def evaluate_submission(
     student_submission_dir: Path,
-    private_agents_dir: Path,
+    reference_agents_dir: Path,
     output_file: Path,
     num_episodes: int = 100
 ) -> Dict[str, Any]:
     """
-    Evaluate a student submission against private reference implementations.
+    Evaluate a student predator against public reference prey.
     
     Args:
         student_submission_dir: Directory containing student's agent.py
-        private_agents_dir: Directory containing private reference agents
+        reference_agents_dir: Directory containing reference agents
         output_file: Path to save evaluation results
         num_episodes: Number of evaluation episodes
         
@@ -214,8 +197,7 @@ def evaluate_submission(
         Evaluation results dictionary
     """
     student_agent_path = student_submission_dir / "agent.py"
-    private_prey_path = private_agents_dir / "prey_agent.py"
-    private_predator_path = private_agents_dir / "predator_agent.py"
+    private_prey_path = reference_agents_dir / "prey_agent.py"
     
     # Validate paths
     if not student_agent_path.exists():
@@ -224,10 +206,10 @@ def evaluate_submission(
             "error": f"Student agent not found at {student_agent_path}"
         }
     
-    if not private_prey_path.exists() or not private_predator_path.exists():
+    if not private_prey_path.exists():
         return {
             "success": False,
-            "error": "Private reference agents not found"
+            "error": "Reference prey agent not found"
         }
     
     print(f"\n{'='*60}")
@@ -236,16 +218,8 @@ def evaluate_submission(
     
     evaluator = SimpleTagEvaluator()
     
-    # Evaluate student as prey vs private predator
-    print("\n--- Evaluating student PREY vs private PREDATOR ---")
-    prey_results = evaluator.evaluate(
-        prey_agent_path=student_agent_path,
-        predator_agent_path=private_predator_path,
-        num_episodes=num_episodes
-    )
-    
-    # Evaluate student as predator vs private prey
-    print("\n--- Evaluating student PREDATOR vs private PREY ---")
+    # Evaluate student predator vs reference prey
+    print("\n--- Evaluating student PREDATOR vs reference PREY ---")
     predator_results = evaluator.evaluate(
         prey_agent_path=private_prey_path,
         predator_agent_path=student_agent_path,
@@ -253,8 +227,8 @@ def evaluate_submission(
     )
     
     # Combine results
-    if not prey_results["success"] or not predator_results["success"]:
-        error_msg = prey_results.get("error", "") + " " + predator_results.get("error", "")
+    if not predator_results["success"]:
+        error_msg = predator_results.get("error", "")
         return {
             "success": False,
             "error": error_msg.strip()
@@ -264,10 +238,7 @@ def evaluate_submission(
         "success": True,
         "student": student_submission_dir.name,
         "timestamp": datetime.now().isoformat(),
-        "prey_score": prey_results["prey_score"],
-        "prey_std": prey_results["prey_std"],
         "predator_score": predator_results["predator_score"],
-        "predator_std": predator_results["predator_std"],
         "num_episodes": num_episodes
     }
     
@@ -278,9 +249,7 @@ def evaluate_submission(
     
     print(f"\n{'='*60}")
     print(f"Evaluation complete!")
-    print(f"Prey score: {results['prey_score']:.4f}")
     print(f"Predator score: {results['predator_score']:.4f}")
-    print(f"Combined score: {((results['prey_score'] + results['predator_score']) / 2):.4f}")
     print(f"Results saved to: {output_file}")
     print(f"{'='*60}\n")
     
@@ -299,10 +268,10 @@ def main():
         help="Path to student submission directory"
     )
     parser.add_argument(
-        "--private-agents-dir",
+        "--reference-agents-dir",
         type=Path,
-        default=Path("private_agents"),
-        help="Path to private reference agents directory"
+        default=Path("reference_agents"),
+        help="Path to reference agents directory"
     )
     parser.add_argument(
         "--output",
@@ -321,7 +290,7 @@ def main():
     
     results = evaluate_submission(
         student_submission_dir=args.submission_dir,
-        private_agents_dir=args.private_agents_dir,
+        reference_agents_dir=args.reference_agents_dir,
         output_file=args.output,
         num_episodes=args.episodes
     )
