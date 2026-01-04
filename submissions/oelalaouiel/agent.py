@@ -79,8 +79,6 @@ class StudentAgent:
                 self._use_model = False
 
     def _heuristic_action(self, obs: np.ndarray):
-        # For adversary obs, prey relative position is typically right before the last 2 dims (prey vel),
-        # i.e. obs[-4:-2] = (dx, dy) from predator to prey.
         if obs.shape[0] < 4:
             return 0
         dx, dy = float(obs[-4]), float(obs[-3])
